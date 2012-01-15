@@ -8,7 +8,7 @@ by John MacFarlane to convert between numerous document markup formats,
 available at <http://johnmacfarlane.net/pandoc/>. It comes with several extensions
 of markdown markup syntax. All these programs are licensed under GPL.
 
-*ditaa-markdown* is a simple Perl script to preprocess and convert ditaa
+*ditaa-markdown* is a simple, dirty Perl script to preprocess and convert ditaa
 diagrams embedded in pandoc's markdown syntax.
 
 ~~~~~ {.ditaa}
@@ -39,6 +39,5 @@ To convert all diagrams to PNG bitmap images and create an HTML, run:
     ./ditaa-markdown.pl example.md | pandoc -f markdown -t html > example.html
 
 This code repository contains a copy of ditaa and ditaa eps as compiled jar
-files. Feel free to copy, fork, reuse, and modify from
-<http://github.com/nichtich/ditaa-markdown>!
-
+files. The current solution is a temporary hack. A better solution is to use
+pandoc's scripting API: <http://johnmacfarlane.net/pandoc/scripting.html>.
