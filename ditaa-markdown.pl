@@ -22,6 +22,7 @@ my %ditaa = ( png => "$loc/ditaa0_6b.jar", pdf => "$loc/DitaaEps.jar" );
 my ($file, $format, $blank);
 my $count = 0;
 my $depth = 0;
+my $ditaaopts = "";
 
 pod2usage(1) if grep /^-(help|h)$/, @ARGV;
 
@@ -51,15 +52,16 @@ while (<IN>) {
 			$depth = 0;
 			close IMG;
 			my $img = $format eq 'png' ? "$file.png" : "$file.eps";
-			system join ' ', 'java', '-jar', $ditaa{$format}, @ARGV, "$file.ditaa", $img, ">/dev/null";
+			system join ' ', 'java', '-jar', $ditaa{$format}, @ARGV, "$ditaaopts", "$file.ditaa", $img, ">/dev/null";
 			system "epstopdf", "-o", "$file.$format", $img if $format eq 'pdf';
 			print OUT "\ ![]($file.$format)\n";
 		} else {
 			print IMG $_;
 		}
 	} else {
-		if ( $blank and /^(~{3,})\s+\{\.ditaa\}/ ) { # ~~~ {.dita}
+		if ( $blank and /^(~{3,})\s+\{\.ditaa(.*?)\}/ ) { # ~~~ {.ditaa <opts>}
 			$depth = length($1);
+            $ditaaopts = "$2";
 			$count++;
 			$file = "image-$count";
 			open (IMG, ">", "$file.ditaa") or die "failed to open $file.ditaa";
