@@ -29,6 +29,18 @@ file, for instance README.pdf from this file was created via
     ./ditaa-markdown.pl -pdf README.md -S -s '0,4' | \
 	markdown2pdf -o README.pdf.
 
+You can also pass any of ditaa's options for a specific image by using this syntax:
+
+~~~~~ {.ditaa -S -s '0,4'}
+                                              +--------------------+
+                                          /-->| processed markdown |
++-----------------+   +----------------+  |   +--------------------+
+| markdown source |-->| ditaa markdown |--*
++-----------------+   +-------o--------+  |   +--------------------+
+                              |           \-->| image files        |
+                            ditaa             +--------------------+
+~~~~~
+
 To convert all ditaa diagrams to EPS and PDF vector images and create a PDF,
 run:
 
