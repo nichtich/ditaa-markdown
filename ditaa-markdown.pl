@@ -54,7 +54,7 @@ while (<IN>) {
 			my $img = $format eq 'png' ? "$file.png" : "$file.eps";
 			system join ' ', 'java', '-jar', $ditaa{$format}, @ARGV, "$ditaaopts", "$file.ditaa", $img, ">/dev/null";
 			system "epstopdf", "-o", "$file.$format", $img if $format eq 'pdf';
-			print OUT "\ ![]($file.$format)\n";
+			print OUT "![]($file.$format)\\ \n";
 		} else {
 			print IMG $_;
 		}
