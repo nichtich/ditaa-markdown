@@ -20,9 +20,13 @@ ditaa-markdown [-png|-pdf] [ditaa-options] input [output]
 my $loc = dirname(abs_path($0));
 my %ditaa = ( png => "$loc/ditaa0_6b.jar", pdf => "$loc/DitaaEps.jar" );
 my ($file, $format, $blank);
-my $count = 0;
-my $depth = 0;
-my $ditaaopts = "";
+
+my $count = 0;       # image counter to get unique image file names
+my $depth = 0;       # number of tildes if inside a code block
+my $justcode;        # true if inside a non-ditaa code block
+my $ditaaopts = "";  # ditaa command line options for the current image
+my $alt = "";        # alt text of current image
+my $caption = "";    # caption of current image
 
 pod2usage(1) if grep /^-(help|h)$/, @ARGV;
 
@@ -50,21 +54,41 @@ while (<IN>) {
 	if ($depth) {
 		if ( /^(~{3,})\s*$/ and length($1) >= $depth ) {
 			$depth = 0;
-			close IMG;
-			my $img = $format eq 'png' ? "$file.png" : "$file.eps";
-			system join ' ', 'java', '-jar', $ditaa{$format}, @ARGV, "$ditaaopts", "$file.ditaa", $img, ">/dev/null";
-			system "epstopdf", "-o", "$file.$format", $img if $format eq 'pdf';
-			print OUT "![]($file.$format)\\ \n";
+            if ($justcode) {
+                $justcode = 0;
+                print OUT $_;
+            } else {
+                close IMG;
+                my $img = $format eq 'png' ? "$file.png" : "$file.eps";
+                system join ' ', 'java', '-jar', $ditaa{$format}, @ARGV, "$ditaaopts", "$file.ditaa", $img, ">/dev/null";
+                system "epstopdf", "-o", "$file.$format", $img if $format eq 'pdf';
+                my $md = "![$alt]($file.$format";
+                $caption = " \"$caption\"" if $caption;
+                $md .= "$caption)";
+                $md .= '\ ' unless $alt;
+                print OUT "$md\n";
+            }
 		} else {
-			print IMG $_;
+            if ($justcode) {
+    			print OUT $_;
+            } else {
+    			print IMG $_;
+            }
 		}
 	} else {
-		if ( $blank and /^(~{3,})\s+\{\.ditaa(.*?)\}/ ) { # ~~~ {.ditaa <opts>}
-			$depth = length($1);
-            $ditaaopts = "$2";
-			$count++;
-			$file = "image-$count";
-			open (IMG, ">", "$file.ditaa") or die "failed to open $file.ditaa";
+    	if ( $blank and /^(~{3,})(\s+\{(.*)\})/ ) {
+            $depth = length($1);
+            my $args = $3;
+            if ($args and $args =~ /^\.ditaa(\s+(.*))?/) { # ~~~ {.ditaa <opts>}
+#                $2 ||= "";
+                my @classes = $2 ? grep /\.[^ ]+/, split(/\s+/, "$2") : ();
+                $ditaaopts = join ' ', map { s/^\.//; s/:/ /; "--$_"; } @classes;
+	    		$count++;
+		    	$file = "image-$count";
+    			open (IMG, ">", "$file.ditaa") or die "failed to open $file.ditaa";
+            } else {
+                $justcode = 1;
+            }
 		} else {
 			$blank = ($_ =~ /^\s*$/);
 			print OUT $_;
