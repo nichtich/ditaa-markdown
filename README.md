@@ -32,7 +32,7 @@ file, for instance README.pdf from this file was created via
 You can also pass any of ditaa's options for a specific image by using this syntax:
 
 ~~~~~~
-~~~~~ {.ditaa .no-shadows .scale=0,4}
+~~~~~ {.ditaa .no-shadows .scale:0,4}
 ...
 ~~~~~
 ~~~~~~
