@@ -23,6 +23,10 @@ diagrams embedded in pandoc's markdown syntax.
 
 Figure: ditaa-markdown conversion process
 
+To create HTML, just call:
+
+    ./ditaa-markdown.pl README.md | pandoc -f markdown -t html > README.html
+
 You can pass any of ditaa's options to ditaa-markdown after the input/output
 file, for instance README.pdf from this file was created via
 
@@ -61,3 +65,16 @@ To convert all diagrams to PNG bitmap images and create an HTML, run:
 This code repository contains a copy of ditaa and ditaa eps as compiled jar
 files. The current solution is a temporary hack. A better solution is to use
 pandoc's scripting API: <http://johnmacfarlane.net/pandoc/scripting.html>.
+
+## GraphViz
+
+In addition to ditaa you can also use GraphViz to create inline graph diagrams
+like this:
+
+~~~~ {.dot}
+digraph {
+  A -> B -> C;
+  A -> C;
+}
+~~~~
+
