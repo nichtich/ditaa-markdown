@@ -1,0 +1,142 @@
+#!/usr/bin/perl
+# This file has been licensed under GPL by Jakob Voss
+
+use strict;
+use warnings;
+use Pod::Usage;
+use File::Basename;
+use Cwd 'abs_path';
+
+=head1 NAME
+
+mddia - preprocess diagrams embedded in pandoc markdown
+
+=head1 SYNOPSIS
+
+mddia [-png|-pdf] [options] input [output]
+
+=cut
+
+# required jar files
+my $loc = dirname(abs_path($0));
+foreach ("$loc/ditaa0_6b.jar", "$loc/DitaaEps.jar") {
+    -f $_ || pod2usage("missing $_");
+}
+
+my ($file, $format, $blank);
+
+my $count = 0;       # image counter to get unique image file names
+my $depth = 0;       # number of tildes if inside a code block
+my $justcode;        # true if inside a non-ditaa code block
+my $alt = "";        # alt text of current image
+my $caption = "";    # caption of current image
+my $type;            # diagram type
+my @classes;         # additional "class" options (.foo .bar ...)
+
+my %diagramtypes = (
+    ditaa  => sub {
+        my $file = shift;
+        my ($jar, $img);
+        if ($format eq 'png') {
+            $img = "$file.png";
+            $jar = "$loc/ditaa0_6b.jar";
+        } else {
+            $img = "$file.eps";
+            $jar = "$loc/DitaaEps.jar";
+        }
+        my $args = join ' ', map { s/^\.//; s/:/ /; "--$_"; } @classes;
+        system join ' ', 'java', '-jar', $jar, @ARGV, "$args", "$file.ditaa", $img, ">/dev/null";
+        system "epstopdf", "-o", "$file.$format", $img if $format eq 'pdf';
+    },
+    dot    => sub {
+        my $file = shift;
+        my $img = $format eq 'png' ? "$file.png" : "$file.eps";
+        my $args = join ' ', map { s/^\.//; s/:/=/; "-$_"; } @classes;
+        system join ' ', 'dot', ($format eq 'png' ? '-Tpng' : '-Teps'), "$args", "-o$img", "$file.dot", ">/dev/null";
+        system "epstopdf", "-o", "$file.$format", $img if $format eq 'pdf';
+    },
+    rdfdot => sub { 
+        my $file = shift;
+        my @args = map { s/^\.//; s/:/ /; "-$_"; } @classes;
+        if ($format eq 'png') {
+            system 'rdfdot', @args, '-ttl', "$file.rdfdot", "$file.png";
+        } else {
+            system 'rdfdot', @args, '-ttl', "$file.rdfdot", "$file.dot";
+            system join ' ', 'dot', '-Teps', "-o$file.eps", "$file.dot", ">/dev/null";
+            #system 'rdfdot', @args, '-ttl', "$file.rdfdot", "$file.ps";
+            #system 'ps2pdf', "$file.ps", "$file.pdf";
+            system 'epstopdf', "-o=$file.pdf", "$file.eps";
+        }
+    },
+);
+
+pod2usage(1) if grep /^-(help|h)$/, @ARGV;
+
+if (@ARGV and $ARGV[0] =~ /^-(pdf|png)$/) {
+	$format = $1;
+	shift @ARGV;
+} else {
+	$format = 'png';
+}
+
+my $infile = shift @ARGV;
+open (IN, "<", $infile) or die "failed to open $infile";
+
+if (@ARGV and $ARGV[0] !~ /^-/) {
+	my $outfile = shift @ARGV;
+	open (OUT, ">", $outfile) or die "failed to open $outfile";
+} else {
+	*OUT = *STDOUT;
+}
+
+pod2usage("unknown format") if $format !~ /^(png|pdf)$/;
+
+my %ditaa = ( png => "$loc/ditaa0_6b.jar", pdf => "$loc/DitaaEps.jar" );
+
+my $line = 0;
+while (<IN>) {
+    $line++;
+    #no warnings;  print STDERR "$line: $depth $justcode: $_\n";
+	if ($depth) { # in a code block
+		if ( /^(~{3,})\s*$/ and length($1) >= $depth ) {
+			$depth = 0;
+            if ($justcode) {
+                $justcode = 0;
+                print OUT $_;
+            } else {
+                close IMG;
+                $diagramtypes{$type}->($file);
+
+                my $md = "![$alt]($file.$format";
+                $caption = " \"$caption\"" if $caption;
+                $md .= "$caption)";
+                $md .= '\ ' unless $alt;
+                print OUT "$md\n";
+            }
+		} else {
+            if ($justcode) {
+    			print OUT $_;
+            } else {
+    			print IMG $_;
+            }
+		}
+	} else {
+    	if ( $blank and /^(~{3,})(\s+\{(.*)\})?/ ) {
+            $depth = length($1);
+            my $args = $3;
+            if ($args and $args =~ /^\.([a-z]+)(\s+(.*))?/ and $diagramtypes{$1}) {
+                $type = $1;
+                @classes = $3 ? grep /\.[^ ]+/, split(/\s+/, "$3") : ();
+	    		$count++;
+		    	$file = "image-$count";
+      			open (IMG, ">", "$file.$type") or die "failed to open $file.$type";
+            } else {
+                $justcode = 1;
+			    print OUT $_;
+            }
+		} else {
+			$blank = ($_ =~ /^\s*$/);
+			print OUT $_;
+		}
+	}
+}

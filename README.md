@@ -1,80 +1,143 @@
-% ditaa in pandoc's markdown
+% Embedded diagrams in pandoc's markdown
+% Jakob Voss
 
-*ditaa* is a java program created by Stathis Sideris to convert diagrams in
-ASCII art to PNG images. It is available at <http://ditaa.sourceforge.net/>.
-Mikael Brännström created an extension to convert diagrams to EPS, available at
-<http://ditaa-addons.sourceforge.net/>. *Pandoc* is a Haskell program created
-by John MacFarlane to convert between numerous document markup formats,
-available at <http://johnmacfarlane.net/pandoc/>. It comes with several extensions
-of markdown markup syntax. All these programs are licensed under GPL.
+# Introduction
 
-*ditaa-markdown* is a simple, dirty Perl script to preprocess and convert ditaa
-diagrams embedded in pandoc's markdown syntax.
+**Pandoc** is a Haskell program to convert between numerous document markup
+formats. It comes with an abstract document model and a serialization in
+extended markdown syntax. Pandoc was created by John MacFarlane and it is
+available as Open Source at <http://johnmacfarlane.net/pandoc/>.
 
-~~~~~ {.ditaa}
-                                              +--------------------+
-                                          /-->| processed markdown |
-+-----------------+   +----------------+  |   +--------------------+
-| markdown source |-->| ditaa markdown |--*
-+-----------------+   +-------o--------+  |   +--------------------+
-                              |           \-->| image files        |
-                            ditaa             +--------------------+
+**mddia** is a simple, dirty Perl script to preprocess and convert diagrams
+embedded in pandoc's markdown syntax. This is a temporary hack because of
+lacking Haskell skills. Anyway, the script may be rewritten, but the underlying
+principles and data format will stay.[^1] Up to now the script supports the
+following diagram types:
+
+[^1]: A better implementation would be based on pandoc's scripting API:
+<http://johnmacfarlane.net/pandoc/scripting.html>. See the dot plugin at
+<http://gitit.net/> for how to dot it.
+
+<!-- TODO: Percent characters in URLs break PDF generation?! -->
+
+ditaa
+
+:    a java program created by Stathis Sideris to convert diagrams in ASCII art 
+     to PNG images. It is available at <http://ditaa.sourceforge.net/>.  Mikael
+     Brännström created an extension to convert diagrams to EPS, available at
+     <http://ditaa-addons.sourceforge.net/>.
+
+dot
+
+:    GraphViz's graph description language. See 
+     <http://en.wikipedia.org/wiki/DOT_language> for more information.
+
+rdfdot
+
+:    RDF graphs based on RDF/Turtle. The command line program `rdfdot` is
+     included in the CPAN package [RDF::Trine::Exporter::GraphViz](http://search.cpan.org/perldoc?RDF::Trine::Exporter::GraphViz).
+
+Ditaa is bundled with this script, while GraphViz and rdfdot must be installed
+manually. This script, pandoc, ditaa, dot, and rdfdot are all licensed as free
+software.
+
+# Usage
+
+mddia acts acts as filter that makes use of diagram creation programs
+to process a markdown source while emitting some image files.
+
+~~~~~ {.ditaa .no-separation}
+                                  
++-----------------+       +--------+           +--------------------+
+| markdown source |------>| mdddia |------*--->| processed markdown |
++-----------------+       +--------+      |    +--------------------+
+                              |           \--->| image files        |
+                    +------------------+       +--------------------+
+                    | diagram creation |
+                    +------------------+
+                    | ditaa/dot/rdfdot |
+                    +------------------+
 ~~~~~
 
-Figure: ditaa-markdown conversion process
+Image files can be emitted in PNG format (the default) or in PDF format.
+You can choose the image format by command line option `-pdf` or `-png`.
+To create HTML from markdown via pandoc, call for instance:
 
-To create HTML, just call:
+    ./mddia README.md | pandoc -s -t html > README.html
 
-    ./ditaa-markdown.pl README.md | pandoc -f markdown -t html > README.html
+Or to create PDF:
 
-You can pass any of ditaa's options to ditaa-markdown after the input/output
-file, for instance README.pdf from this file was created via
+    ./mddia -pdf README.md | markdown2pdf -o README.pdf 
 
-    ./ditaa-markdown.pl -pdf README.md -S -s '0,4' | \
-	markdown2pdf -o README.pdf.
+Diagrams are embedded in Markdown as source code blocks. This way your
+documents are valid and processable even without `mddia` (your diagrams will
+only show up as source code). For instance the image above was created 
+with this code block:
 
-You can also pass any of ditaa's options for a specific image by using this syntax:
+~~~~~~~~
+~~~~~ {.ditaa .no-separation}
+                                  
++-----------------+       +--------+           +--------------------+
+| markdown source |------>| mdddia |------*--->| processed markdown |
++-----------------+       +--------+      |    +--------------------+
+                              |           \--->| image files        |
+                    +------------------+       +--------------------+
+                    | diagram creation |
+                    +------------------+
+                    | ditaa/dot/rdfdot |
+                    +------------------+
+~~~~~
+~~~~~~~~
+
+All "class names" (the strings starting with a dot) after the diagram type are passed
+are argument to the diagram creation. For instance  
 
 ~~~~~~
-~~~~~ {.ditaa .no-shadows .scale:0,4}
-...
-~~~~~
+~~~~~ {.ditaa .no-shadows .scale:0.4}
 ~~~~~~
 
-For instance the image above with `.no-shadows`:
- 
-~~~~~ {.ditaa .no-shadows}
-                                              +--------------------+
-                                          /-->| processed markdown |
-+-----------------+   +----------------+  |   +--------------------+
-| markdown source |-->| ditaa markdown |--*
-+-----------------+   +-------o--------+  |   +--------------------+
-                              |           \-->| image files        |
-                            ditaa             +--------------------+
-~~~~~
+Is passed to `ditaa` as `--no-shadows --scale 0.4`.
 
-To convert all ditaa diagrams to EPS and PDF vector images and create a PDF,
-run:
+# Examples
 
-    ./ditaa-markdown.pl -pdf example.md | markdown2pdf -o example.pdf
+## Input source code
 
-To convert all diagrams to PNG bitmap images and create an HTML, run:
-
-    ./ditaa-markdown.pl example.md | pandoc -f markdown -t html > example.html
-
-This code repository contains a copy of ditaa and ditaa eps as compiled jar
-files. The current solution is a temporary hack. A better solution is to use
-pandoc's scripting API: <http://johnmacfarlane.net/pandoc/scripting.html>.
-
-## GraphViz
-
-In addition to ditaa you can also use GraphViz to create inline graph diagrams
-like this:
-
-~~~~ {.dot}
+~~~~~~
+~~~~ {.dot .Grankdir:LR}
 digraph {
   A -> B -> C;
   A -> C;
 }
 ~~~~
+
+~~~~ {.rdfdot}
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@base <http://example.com/> .
+<alice> foaf:name "Alice" ;
+        foaf:knows [ foaf:name "Bob" ] .
+~~~~
+~~~~~~
+
+## Generated diagrams
+
+~~~~ {.dot .Grankdir:LR}
+digraph {
+  A -> B -> C;
+  A -> C;
+}
+~~~~
+
+~~~~ {.rdfdot}
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@base <http://example.com/> .
+<alice> foaf:name "Alice" ;
+        foaf:knows [ foaf:name "Bob" ] .
+~~~~
+
+# About
+
+mddia is available at <https://github.com/nichtich/ditaa-markdown>. Feel free
+to fork and extend under any free viral open source license. The files
+README.html and README.pdf in the repository may be out of date compared to the
+original README.md.
 
