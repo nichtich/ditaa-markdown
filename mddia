@@ -121,9 +121,10 @@ while (<IN>) {
             }
 		}
 	} else {
-    	if ( $blank and /^(~{3,})(\s+\{(.*)\})?/ ) {
+    	if ( $blank and /^(~{3,})(\s+\{(.*)\})?\s*\[(.*)\]/ ) {
             $depth = length($1);
             my $args = $3;
+            $alt = $4;
             if ($args and $args =~ /^\.([a-z]+)(\s+(.*))?/ and $diagramtypes{$1}) {
                 $type = $1;
                 @classes = $3 ? grep /\.[^ ]+/, split(/\s+/, "$3") : ();
